@@ -7,7 +7,7 @@ public class Testing {
         //for (int i=1;i<arr.length;i=i+1)
         //    tr.add(arr[i]);
         for (int i = 0; i < arr.length; i++)
-            tr.insert(arr[i]);
+            tr.insert2pass(arr[i]);
         System.out.println(tr.toString());
 
         tr.delete(23);
@@ -22,12 +22,12 @@ public class Testing {
         tr.delete(4); //TODO: combined
         System.out.println(tr.toString());
 
-        /*
+
         tr.delete(16);
         System.out.println(tr.toString());
         tr.delete(15);
         System.out.println(tr.toString());
-*/
+
     }
 
 }

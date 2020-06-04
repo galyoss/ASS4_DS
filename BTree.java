@@ -154,7 +154,7 @@ public class BTree<T extends Comparable<T>> {
         }
         else //node is internal, numOfkeys > t-1
         {
-            //TODO: check indtodel - should return index to delete (not bigger or smaller). is doesn't work use for
+
             int indtodel=0;
             for (int i=0;i<node.numberOfKeys();i++)
                 if (node.getKey(i).compareTo(value) == 0)
@@ -241,10 +241,183 @@ public class BTree<T extends Comparable<T>> {
 
     //Task 2.2
     public boolean insert2pass(T value) {
-        // TODO: implement your code here
-        return false;
+
+        if (root==null) //empty tree senario
+        {
+            root=new Node<>(null,this.maxKeySize,this.maxChildrenSize);
+            root.addKey(value);
+            return true;
+        }
+
+        Node<T> current = root;
+        Node<T> firstToSplit = null; // pointer to the first node to spilt while needed
+        if (current.numberOfKeys()==maxKeySize)
+            firstToSplit=current;
+        while ( current.childrenSize != 0) // navigationg till leaf
+        {
+            if(current.numberOfKeys() == this.maxKeySize)
+            {
+                if(firstToSplit == null)
+                {
+                    firstToSplit = current;
+                }
+            }
+            else
+            {
+                firstToSplit=null;
+            }
+            //find children
+            //check for value less or equal than minimum of current node
+            T less = current.getKey(0);
+            if (value.compareTo(less)<=0)
+            {
+                current=current.getChild(0);
+                continue;
+            }
+
+            //check for value less or equal than minimum of current node
+            T bigger = current.getKey(current.numberOfKeys()-1);
+            if (value.compareTo(bigger)>0)
+            {
+                current=current.getChild(current.numberOfChildren()-1);
+                continue;
+            }
+
+            // internal search
+            boolean found = false;
+            int continueChild_index = 1;
+            for ( int i=1 ; i < current.numberOfKeys() & !found ; i++ )
+            // finding the right place to continue searching
+            {
+                T left = current.getKey(i-1);
+                T right = current.getKey(i);
+                if (value.compareTo(left)>0 && value.compareTo(right)<=0)
+                {
+                    found = true;
+                    continueChild_index = i;
+                }
+            }
+            current = current.getChild(continueChild_index);
+
+        } //end-while
+
+        if(current.numberOfKeys()==this.maxKeySize)
+        {
+            if(firstToSplit==null)
+            {
+                firstToSplit = current;
+            }
+        }
+        else
+        {
+            firstToSplit=null;
+        }
+
+        if(firstToSplit==null)
+        {
+            current.addKey(value);
+            this.size++;
+            return true;
+        }
+        else if (firstToSplit==root)
+            return insert(value);
+        else
+            return insertFrom(value, firstToSplit.parent);
     }
 
+    private boolean insertFrom(T value, Node<T> fromHere)
+    {
+        // B-tree not empty, starting navigating from root
+        checkNsplit(fromHere); // at the beging the root have 0 children therefore it won't be splited as needed
+        Node<T> current = fromHere;
+        while (current.childrenSize != 0) // navigationg till leaf
+        {
+            //find children
+            //check for value less or equal than minimum of current node
+            T less = current.getKey(0);
+            if (value.compareTo(less)<=0)
+            {
+                Node<T> child = current.getChild(0);
+                if(checkNsplit(child))
+                {
+                    less=current.getKey(0);
+                    if (value.compareTo(less)<=0)
+                    {
+                        current=current.getChild(0);
+                    }
+                    else
+                    {
+                        current=current.getChild(1);
+                    }
+                }
+                else
+                {
+                    current=current.getChild(0);
+                }
+                continue;
+            }
+
+            //check for value less or equal than minimum of current node
+            T bigger = current.getKey(current.numberOfKeys()-1);
+            if (value.compareTo(bigger)>0)
+            {
+                Node<T> child = current.getChild(current.numberOfChildren()-1);
+                if(checkNsplit(child))
+                {
+                    bigger=current.getKey(current.numberOfKeys()-1);
+                    if (value.compareTo(less)<=0)
+                    {
+                        current=current.getChild(current.numberOfChildren()-2);
+                    }
+                    else
+                    {
+                        current=current.getChild(current.numberOfChildren()-1);
+                    }
+                }
+                else
+                {
+                    current=current.getChild(current.numberOfChildren()-1);
+                }
+                continue;
+            }
+
+            // internal search
+            boolean found = false;
+            int continueChild_index = 1;
+            for ( int i=1 ; i < current.numberOfKeys() & !found ; i++ )
+            // finding the right place to continue searching
+            {
+                T left = current.getKey(i-1);
+                T right = current.getKey(i);
+                if (value.compareTo(left)>0 && value.compareTo(right)<=0)
+                {
+                    found = true;
+                    continueChild_index = i;
+                }
+            }
+            //child found checkNsplit stage
+            if (checkNsplit(current.getChild(continueChild_index)))
+            {
+                T left =current.getKey(continueChild_index);
+                if (value.compareTo(left)<=0)
+                {
+                    current=current.getChild(continueChild_index);
+                }
+                else
+                {
+                    current=current.getChild(continueChild_index +1);
+                }
+            }
+            else
+            {
+                current=current.getChild(continueChild_index);
+            }
+        }
+        // now current is the leaf for insertion
+        current.addKey(value);
+        this.size++;
+        return true;
+    }
     /**
      * {@inheritDoc}
      */
