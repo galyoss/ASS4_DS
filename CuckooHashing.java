@@ -13,7 +13,8 @@ public class CuckooHashing {
     private String[] array; // The array of elements
     private int currentSize; // The number of occupied cells
     private ArrayList<String> stash; //List of items that couldn't find a place
-    
+
+    private Stack<Stack> undoStack;
     /**
      * Construct the hash table.
      */
@@ -33,6 +34,7 @@ public class CuckooHashing {
         makeEmpty();
         hashFunctions = hf;
         numHashFunctions = hf.getNumberOfFunctions();
+        undoStack = new Stack<Stack>();
     }
     
     /**
@@ -47,11 +49,17 @@ public class CuckooHashing {
     	}
         if (find(x))
             return false;
-
-        return insertHelper1(x);
+        //stack that saves all of previous locations
+        Stack<StashItem> undoBU = new Stack<StashItem>();
+        if(insertHelper1(x, undoBU))
+        {
+            undoStack.push(undoBU); //if insertion really occurs so save movements
+            return true;
+        }
+            return false;
     }
     
-    private boolean insertHelper1(String x) {
+    private boolean insertHelper1(String x,Stack<StashItem> undoBU) {
         while (true) {
             int pos = -1;
             int kick_pos = -1;
@@ -77,23 +85,27 @@ public class CuckooHashing {
                     if (array[pos] == null) {
                         array[pos] = x;
                         currentSize++;
+                        undoBU.push(new StashItem(x,kick_pos));
                         return true;
                     }
                     
                 } 
                 if(cycle)
                 	break;
+                undoBU.push(new StashItem(x,kick_pos));
                 if(pos==kick_pos || kick_pos==-1)
                 	kick_pos= myhash(x, 0);
 				else
 					kick_pos=pos;
-                // none of the spots are available, kick out item in kick_pos
+                //none of the spots are available, kick out item in kick_pos
+                //pushing the value that going to change place and its current location
                 String tmp = array[kick_pos];
                 array[kick_pos] = x;
                 x = tmp;
             }
             //insertion got into a cycle use overflow list
             this.stash.add(x);
+            undoBU.push(new StashItem(x,kick_pos));
             return true;
         }
     }
@@ -102,7 +114,22 @@ public class CuckooHashing {
     }
 	
 	public void undo() {
-		// TODO: implement your code here
+
+        if(!undoStack.empty())
+        {
+            Stack cancelInsertion = undoStack.pop();
+            while (!cancelInsertion.empty())
+            {
+                StashItem current = (StashItem) cancelInsertion.pop();
+                int prevDx = current.getPrevIndex();
+                String val = current.getVal();
+                removeAndReset(val,false);
+                if(prevDx!=-1)
+                {
+                    array[prevDx]=val;
+                }
+            }
+        }
 	}
 
     /**
@@ -176,14 +203,22 @@ public class CuckooHashing {
      * @return true if item was found and removed
      */
     public boolean remove(String x) {
+        return removeAndReset(x,true);
+    }
+
+    private boolean removeAndReset(String x,boolean reset) {
         int pos = findPos(x);
         if(pos==-1)
-        	return false;
+            return false;
         if (pos<this.capacity()) {
             array[pos] = null;
-			currentSize--;
+            currentSize--;
         } else {
-        	this.stash.remove(x);
+            this.stash.remove(x);
+        }
+        if(reset)
+        {
+            undoStack = new Stack<Stack>();
         }
         return true;
     }
@@ -247,6 +282,34 @@ public class CuckooHashing {
                 return false;
 
         return true;
+    }
+
+    private class StashItem{
+
+        private String val;
+        private Integer prevIndex;
+
+        public StashItem(String val, Integer prevIndex) {
+            this.val = val;
+            this.prevIndex = prevIndex;
+        }
+
+        public String getVal() {
+            return val;
+        }
+
+        public Integer getPrevIndex() {
+            return prevIndex;
+        }
+
+        @Override
+        public String toString() {
+            return "StashItem{" +
+                    "val='" + val + '\'' +
+                    ", prevIndex=" + prevIndex +
+                    '}';
+        }
+
     }
 	
 }
